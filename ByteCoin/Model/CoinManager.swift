@@ -8,6 +8,10 @@
 
 import Foundation
 
+protocol CoinManagerDelegate {
+    func didUpdateCurrency
+}
+
 struct CoinManager {
     
     let baseURL = "https://rest.coinapi.io/v1/exchangerate/BTC"
@@ -41,7 +45,19 @@ struct CoinManager {
         }
     }
     
-    func parseJson(currencyData: Data) {
-        return "OK"
+    func parseJson(currencyData: Data) -> CurrencyModel? {
+        let decoder = JSONDecoder()
+        
+        do {
+            let decoderData = try decoder.decode(CoinData.self, from: currencyData)
+            let time = decoderData.time
+            let rate = decoderData.rate
+            
+            let currency = CurrencyModel(time: time, rate: rate)
+            
+            return currency
+        } catch {
+//            return error
+        }
     }
 }
