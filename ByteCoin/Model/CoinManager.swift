@@ -9,7 +9,8 @@
 import Foundation
 
 protocol CoinManagerDelegate {
-    func didUpdateCurrency
+    func didUpdateCurrency( _ coinManager: CoinManager, currency: CurrencyModel)
+    func didFailWithError(error: Error)
 }
 
 struct CoinManager {
@@ -18,9 +19,13 @@ struct CoinManager {
     let apiKey = "5D52932F-828A-41E2-8B8F-ADA770ECF705"
     
     let currencyArray = ["AUD", "BRL","CAD","CNY","EUR","GBP","HKD","IDR","ILS","INR","JPY","MXN","NOK","NZD","PLN","RON","RUB","SEK","SGD","USD","ZAR"]
+    
+    var delegate: CoinManagerDelegate?
 
     func getCoinPrice(for currency: String) {
+        print(currency)
         let urlString = "\(baseURL)/\(currency)?apikey=\(apiKey)"
+        print(urlString)
         
         performRequest(with: urlString)
     }
@@ -31,17 +36,18 @@ struct CoinManager {
             
             let task = session.dataTask(with: url) { data, response, error in
                 if error != nil {
-                    print(error!)
+                    self.delegate?.didFailWithError(error: error!)
                     return
                 }
                 
                 if let safeData = data {
                     if let currency = parseJson(currencyData: safeData){
-                        print("OK")
+                        self.delegate?.didUpdateCurrency(self, currency: currency)
                     }
                 }
                 
             }
+            task.resume()
         }
     }
     
@@ -52,12 +58,15 @@ struct CoinManager {
             let decoderData = try decoder.decode(CoinData.self, from: currencyData)
             let time = decoderData.time
             let rate = decoderData.rate
+            let asset_id_quote = decoderData.asset_id_quote
             
-            let currency = CurrencyModel(time: time, rate: rate)
+            let currency = CurrencyModel(time: time, rate: rate, asset_id_quote: asset_id_quote)
             
             return currency
         } catch {
-//            return error
+            delegate?.didFailWithError(error: error)
+            
+            return nil
         }
     }
 }
